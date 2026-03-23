@@ -18,4 +18,4 @@ export HA_NOTIFY_SERVICE
 # subprocesses (plot_logic.py) inherit it
 export SUPERVISOR_TOKEN
 
-python /app/server.py
+python /app/src/server.py

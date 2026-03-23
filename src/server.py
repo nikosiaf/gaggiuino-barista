@@ -147,7 +147,7 @@ def run_plot(shot_id: int, duration: float):
     state["status"] = "plotting"
     try:
         result = subprocess.run(
-            ["python", "/app/plot_logic.py"],
+            ["python", "/app/src/plot_logic.py"],
             capture_output=True,
             text=True,
             timeout=300,
@@ -302,7 +302,7 @@ def plot_latest():
     log(f"Manual plot triggered | shot_id={shot_id} profile={machine['profile']}")
     try:
         result = subprocess.run(
-            ["python", "/app/plot_logic.py"],
+            ["python", "/app/src/plot_logic.py"],
             capture_output=True, text=True, timeout=300,
         )
         if result.returncode != 0:
