@@ -1,8 +1,9 @@
-<p align="center">
+<p>
   <img src="https://raw.githubusercontent.com/nikosiaf/gaggiuino-barista/main/logo.png" alt="Gaggiuino Barista Logo" width="220">
 </p>
 
-# Gaggiuino Barista - Home Assistant Add-on for Gaggiuino modified espresso machines.
+# Gaggiuino Barista 
+# Home Assistant Add-on for Gaggiuino modified espresso machines.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/nikosiaf/gaggiuino-barista/blob/main/LICENSE)
 

@@ -1,8 +1,9 @@
-<p align="center">
-  <img src="https://raw.githubusercontent.com/nikosiaf/gaggiuino-barista/main/logo.png" alt="Gaggiuino Barista Logo" width="220">
+<p>
+  <img src="https://raw.githubusercontent.com/nikosiaf/gaggiuino-barista/main/logo.png" alt="Gaggiuino Barista Logo" width="320">
 </p>
 
 # Gaggiuino Barista
+# Home Assistant Add-on for Gaggiuino modified espresso machines
 
 Automatically generates espresso shot graphs with a hybrid deterministic + AI annotation engine and sends mobile push notifications via Home Assistant after every shot.
 
