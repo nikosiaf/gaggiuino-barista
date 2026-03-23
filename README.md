@@ -2,13 +2,9 @@
   <img src="https://raw.githubusercontent.com/nikosiaf/gaggiuino-barista/main/logo.png" alt="Gaggiuino Barista Logo" width="320">
 </p>
 
-# Gaggiuino Barista 
+# Gaggiuino Barista [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/nikosiaf/gaggiuino-barista/blob/main/LICENSE)
+
 # [Home Assistant](https://www.home-assistant.io/) add-on for [Gaggiuino](https://github.com/Zer0-bit/gaggiuino) espresso machines.
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/nikosiaf/gaggiuino-barista/blob/main/LICENSE)
-
-[Home Assistant](https://www.home-assistant.io/) add-on for [Gaggiuino](https://github.com/Zer0-bit/gaggiuino) espresso machines.
-
 Automatically detects shots, generates detailed graphs, runs a deterministic telemetry analyzer plus AI phrasing, and sends mobile push notifications with annotated graphs and next-shot tuning recommendations.
 
 ## What's new in 1.1.0
