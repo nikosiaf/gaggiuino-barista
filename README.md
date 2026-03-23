@@ -1,4 +1,6 @@
-![Logo](https://github.com/nikosiaf/gaggiuino-barista/blob/main/logo.png)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/nikosiaf/gaggiuino-barista/main/logo.png" alt="Gaggiuino Barista Logo" width="220">
+</p>
 
 # Gaggiuino Barista - Home Assistant Add-on for Gaggiuino modified espresso machines.
 
@@ -51,7 +53,7 @@ Automatically detects shots, generates detailed graphs, runs a deterministic tel
 4. Add the REST sensor from `gaggiuino_barista/gaggiuino_barista_sensors.yaml` to your HA config
 5. Start or rebuild the add-on
 
-See the [Documentation](https://github.com/nikosiaf/gaggiuino-barista/blob/main/DOCS.md) for full setup instructions.
+See the [Documentation](https://github.com/nikosiaf/gaggiuino-barista/blob/main/docs/DOCS.md) for full setup instructions.
 
 ## AI architecture
 

@@ -1,4 +1,6 @@
-![Logo](https://github.com/nikosiaf/gaggiuino-barista/blob/main/logo.png)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/nikosiaf/gaggiuino-barista/main/logo.png" alt="Gaggiuino Barista Logo" width="220">
+</p>
 
 # Gaggiuino Barista
 

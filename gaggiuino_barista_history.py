@@ -25,7 +25,7 @@ def main():
     if HISTORY_JSON.exists():
         try:
             shots = json.loads(HISTORY_JSON.read_text())
-            result["shots"]       = shots[:5]
+            result["shots"]       = shots[:6]
             result["total_shots"] = len(shots)
         except Exception as e:
             result["error_json"] = str(e)
