@@ -1,148 +1,116 @@
 # ============================================================
-# Gaggiuino Barista v2.0.0 - Home Assistant Sensors & Cards
+# REST sensor for last shot data (add under "rest:" in configuration.yaml)
+# Replace "homeassistant.local" with your actual HA hostname/IP
 # ============================================================
-#
-# PART 1: REST SENSOR (add under "rest:" in configuration.yaml)
-# PART 2: COMMAND LINE SENSOR (add under "command_line:" in configuration.yaml)
-# PART 3: TEMPLATE SENSORS (add under "template:" in configuration.yaml)
-# PART 4: DASHBOARD CARDS (add via HA Dashboard UI)
-#
-# ============================================================
-
-# ── PART 1: REST Sensor ────────────────────────────────────────
-# Reads last shot data from the add-on
 #
 # rest:
 #   - resource: "http://homeassistant.local:8123/local/gaggiuino-barista/last_shot.json"
 #     scan_interval: 10
 #     sensor:
-#       - name: "Gaggiuino Last Shot"
+#       - name: "Gaggiuino Barista Last Shot"
 #         unique_id: gaggiuino_barista_last_shot
 #         value_template: "{{ value_json.shot_id }}"
-#         json_attributes: "{{ value_json.keys() | list }}"
+#         json_attributes:
+#           - datetime
+#           - shot_id
+#           - profile
+#           - duration_s
+#           - final_weight_g
+#           - target_weight_g
+#           - max_pressure_bar
+#           - water_temp_c
+#           - history_count
+#           - ai_available
+#           - ai_provider
+#           - score
+#           - confidence
+#           - verdict
+#           - tuning
+#           - notification_text
+#           - annotations
+#           - features
+#           - detected_events
+#           - profile_match_type
+#           - profile_match_confidence
+#           - matched_profile_name
+#           - profile_adherence_score
+#           - taste_profile
+#           - extraction_profile
 
+# ── Card 1: Last Espresso Shot ───────────
 
-# ── PART 2: Command Line Sensor ───────────────────────────────
-# Reads shot history and graph files
-#
-# command_line:
-#   - sensor:
-#       name: "Gaggiuino Shot History"
-#       unique_id: gaggiuino_barista_shot_history
-#       command: "python3 /config/scripts/gaggiuino_barista_history.py"
-#       scan_interval: 30
-#       json_attributes:
-#         - shots
-#         - graphs
-#         - total_shots
-#       value_template: "{{ value_json.total_shots }}"
-#
-# Copy addon/gaggiuino_barista_history.py to /config/scripts/
-
-
-# ── PART 3: Template Sensors ───────────────────────────────────
-# Creates 10 graph URL sensors for the picture card grid
-#
-# template:
-#   - sensor:
-#       - name: "Gaggiuino Graph 1"
-#         unique_id: gaggiuino_barista_graph_1
-#         state: >
-#           {% set g = state_attr('sensor.gaggiuino_barista_shot_history', 'graphs') %}
-#           {{ g[0].url if g and g | length > 0 else '' }}
-#       - name: "Gaggiuino Graph 2"
-#         unique_id: gaggiuino_barista_graph_2
-#         state: >
-#           {% set g = state_attr('sensor.gaggiuino_barista_shot_history', 'graphs') %}
-#           {{ g[1].url if g and g | length > 1 else '' }}
-#       - name: "Gaggiuino Graph 3"
-#         unique_id: gaggiuino_barista_graph_3
-#         state: >
-#           {% set g = state_attr('sensor.gaggiuino_barista_shot_history', 'graphs') %}
-#           {{ g[2].url if g and g | length > 2 else '' }}
-#       - name: "Gaggiuino Graph 4"
-#         unique_id: gaggiuino_barista_graph_4
-#         state: >
-#           {% set g = state_attr('sensor.gaggiuino_barista_shot_history', 'graphs') %}
-#           {{ g[3].url if g and g | length > 3 else '' }}
-#       - name: "Gaggiuino Graph 5"
-#         unique_id: gaggiuino_barista_graph_5
-#         state: >
-#           {% set g = state_attr('sensor.gaggiuino_barista_shot_history', 'graphs') %}
-#           {{ g[4].url if g and g | length > 4 else '' }}
-#       - name: "Gaggiuino Graph 6"
-#         unique_id: gaggiuino_barista_graph_6
-#         state: >
-#           {% set g = state_attr('sensor.gaggiuino_barista_shot_history', 'graphs') %}
-#           {{ g[5].url if g and g | length > 5 else '' }}
-#       - name: "Gaggiuino Graph 7"
-#         unique_id: gaggiuino_barista_graph_7
-#         state: >
-#           {% set g = state_attr('sensor.gaggiuino_barista_shot_history', 'graphs') %}
-#           {{ g[6].url if g and g | length > 6 else '' }}
-#       - name: "Gaggiuino Graph 8"
-#         unique_id: gaggiuino_barista_graph_8
-#         state: >
-#           {% set g = state_attr('sensor.gaggiuino_barista_shot_history', 'graphs') %}
-#           {{ g[7].url if g and g | length > 7 else '' }}
-#       - name: "Gaggiuino Graph 9"
-#         unique_id: gaggiuino_barista_graph_9
-#         state: >
-#           {% set g = state_attr('sensor.gaggiuino_barista_shot_history', 'graphs') %}
-#           {{ g[8].url if g and g | length > 8 else '' }}
-#       - name: "Gaggiuino Graph 10"
-#         unique_id: gaggiuino_barista_graph_10
-#         state: >
-#           {% set g = state_attr('sensor.gaggiuino_barista_shot_history', 'graphs') %}
-#           {{ g[9].url if g and g | length > 9 else '' }}
-
-
-# ── PART 4: Dashboard Cards ───────────────────────────────────
-# Add via: Dashboard → Edit → Add Card → Manual
-
-# Card 1: Latest Shot
 type: vertical-stack
 cards:
   - type: markdown
-    title: ☕ Latest Espresso Shot ☕
+    title: ☕☕☕ Last Espresso Shot ☕☕☕
     content: >-
-      {% set s    = state_attr('sensor.gaggiuino_barista_last_shot', 'datetime') %}
-      {% set prof = state_attr('sensor.gaggiuino_barista_last_shot', 'profile') %}
-      {% set dur  = state_attr('sensor.gaggiuino_barista_last_shot', 'duration_s') %}
-      {% set w    = state_attr('sensor.gaggiuino_barista_last_shot', 'final_weight_g') %}
-      {% set tw   = state_attr('sensor.gaggiuino_barista_last_shot', 'target_weight_g') %}
-      {% set p    = state_attr('sensor.gaggiuino_barista_last_shot', 'max_pressure_bar') %}
-      {% set t    = state_attr('sensor.gaggiuino_barista_last_shot', 'water_temp_c') %}
-      {% set sc   = state_attr('sensor.gaggiuino_barista_last_shot', 'score') %}
-      {% set ai   = state_attr('sensor.gaggiuino_barista_last_shot', 'ai_available') %}
-      {% set v    = state_attr('sensor.gaggiuino_barista_last_shot', 'verdict') %}
-      {% set tips = state_attr('sensor.gaggiuino_barista_last_shot', 'tuning') %}
-      {% set ystr = w ~ 'g / ' ~ tw ~ 'g' if tw and tw != '-' and tw != 'None' else w ~ 'g' %}
+      {% set s    = state_attr('sensor.gaggiuino_barista_last_shot', 'datetime')
+      %}
+
+      {% set prof = state_attr('sensor.gaggiuino_barista_last_shot', 'profile')
+      %}
+
+      {% set dur  = state_attr('sensor.gaggiuino_barista_last_shot',
+      'duration_s') %}
+
+      {% set w    = state_attr('sensor.gaggiuino_barista_last_shot',
+      'final_weight_g') %}
+
+      {% set tw   = state_attr('sensor.gaggiuino_barista_last_shot',
+      'target_weight_g') %}
+
+      {% set p    = state_attr('sensor.gaggiuino_barista_last_shot',
+      'max_pressure_bar') %}
+
+      {% set t    = state_attr('sensor.gaggiuino_barista_last_shot',
+      'water_temp_c') %}
+
+      {% set ai   = state_attr('sensor.gaggiuino_barista_last_shot',
+      'ai_available') %}
+
+      {% set v    = state_attr('sensor.gaggiuino_barista_last_shot', 'verdict')
+      %}
+
+      {% set tips = state_attr('sensor.gaggiuino_barista_last_shot', 'tuning')
+      %}
+
+      {% set yield_str = w ~ 'g / ' ~ tw ~ 'g' if tw and tw != '-' and tw !=
+      'None' else w ~ 'g' %}
 
       {% if prof and prof != 'None' %}
-      **{{ s }}** &nbsp; ☕ {{ prof }}
-      
-      ⏱ {{ dur }}s &nbsp; ⚖️ {{ ystr }} &nbsp; 📈 {{ p }}bar &nbsp; 🌡 {{ t }}°C
-      
-      {% if sc %}<br>📊 **Score: {{ sc }}/100**{% endif %}
+
+      **{{ s }}**    ☕ {{ prof }}
+
+      ⏱  {{ dur }}s - ⚖️ {{ yield_str }}  -  📈  {{ p }} bar - 🌡️ {{ t }}°C 
+
 
       ---
-      {% if ai %}
-      🧠 **AI Analysis**
+
+      {% if ai %}🧠 **AI Analysis**
+
+
       {{ v }}
-      {% if tips %}
-      🔧 **Next shot:**
-      {% for tip in tips[:2] %}- {{ tip }}
+
+      {% if tips %}🔧 **Next shot:**
+
+      {% for tip in tips %}- {{ tip }}
+
       {% endfor %}{% endif %}
-      {% else %}
-      *AI analysis unavailable*
+
+      {% else %}*AI analysis unavailable*
+
       {% endif %}
-      {% else %}
-      *No shots recorded yet — pull a shot!*
+
+      {% else %}*No shots recorded yet — pull a shot first!*
+
       {% endif %}
     card_mod:
       style: |
-        ha-card { border-radius: 12px; margin-bottom: 8px; }
+        ha-card {
+          border-bottom-left-radius: 0 !important;
+          border-bottom-right-radius: 0 !important;
+          margin-bottom: -2px;text-align: center;
+        }        
   - type: custom:config-template-card
     entities:
       - sensor.gaggiuino_barista_graph_1
@@ -152,21 +120,27 @@ cards:
       tap_action:
         action: url
         url_path: ${states['sensor.gaggiuino_barista_graph_1'].state}
-    card_mod:
-      style: |
-        ha-card { border-radius: 12px; }
+      card_mod:
+        style: |
+          ha-card {
+            border-top-left-radius: 0 !important;
+            border-top-right-radius: 0 !important;
+          }
 
 
-# Card 2: Shot History
+# ── Card 2: Shot History ─────────────────
+
 type: vertical-stack
 cards:
   - type: markdown
-    title: 📋 Shot History
+    content: "## 📋 Shot History 📋"
     card_mod:
       style: |
-        ha-card { border-radius: 12px 12px 0 0; margin-bottom: -2px; text-align: center; }
-
-# Shot 2
+        ha-card {
+          border-bottom-left-radius: 0 !important;
+          border-bottom-right-radius: 0 !important;
+          margin-bottom: -2px;text-align: center;
+        }
   - type: custom:config-template-card
     entities:
       - sensor.gaggiuino_barista_shot_history
@@ -175,23 +149,35 @@ cards:
       type: vertical-stack
       cards:
         - type: markdown
-          content: >-
+          content: |-
             ${(() => {
               const shots = states['sensor.gaggiuino_barista_shot_history'].attributes.shots;
-              if (!shots || shots.length < 2) return '';
+              if (!shots || shots.length < 2) return '*No data*';
               const s = shots[1];
-              return '**' + s.datetime.substring(0,10) + ' ' + s.datetime.substring(11,16) + ' — ' + s.profile + '** &nbsp; ⏱ ' + s.duration_s + 's &nbsp; ⚖️ ' + s.final_weight_g + 'g &nbsp; 📈 ' + s.max_pressure_bar + 'bar';
+              return '**' + s.datetime.substring(0,10) + ' ' + s.datetime.substring(11,16) + ' — ' + s.profile + '**  \n⏱ ' + s.duration_s + 's &nbsp;|&nbsp; ⚖️ ' + s.final_weight_g + 'g &nbsp;|&nbsp; 📈 ' + s.max_pressure_bar + ' bar &nbsp;|&nbsp; 🌡️ ' + s.water_temp_c + '°C';
             })()}
           card_mod:
             style: |
-              ha-card { border-radius: 0; margin-bottom: -2px; text-align: center; padding: 8px; }
-        - type: picture
-          image: ${states['sensor.gaggiuino_barista_graph_2'].state}
-          card_mod:
-            style: |
-              ha-card { border-radius: 0 0 12px 12px; }
-
-# Shot 3
+              ha-card {
+                border-bottom-left-radius: 0 !important;
+                border-bottom-right-radius: 0 !important;
+                margin-bottom: -2px;text-align: center;
+              }
+        - type: custom:config-template-card
+          entities:
+            - sensor.gaggiuino_barista_graph_2
+          card:
+            type: picture
+            image: ${states['sensor.gaggiuino_barista_graph_2'].state}
+            tap_action:
+              action: url
+              url_path: ${states['sensor.gaggiuino_barista_graph_2'].state}
+            card_mod:
+              style: |
+                ha-card {
+                  border-top-left-radius: 0 !important;
+                  border-top-right-radius: 0 !important;
+                }
   - type: custom:config-template-card
     entities:
       - sensor.gaggiuino_barista_shot_history
@@ -200,23 +186,35 @@ cards:
       type: vertical-stack
       cards:
         - type: markdown
-          content: >-
+          content: |-
             ${(() => {
               const shots = states['sensor.gaggiuino_barista_shot_history'].attributes.shots;
-              if (!shots || shots.length < 3) return '';
+              if (!shots || shots.length < 3) return '*No data*';
               const s = shots[2];
-              return '**' + s.datetime.substring(0,10) + ' ' + s.datetime.substring(11,16) + ' — ' + s.profile + '** &nbsp; ⏱ ' + s.duration_s + 's &nbsp; ⚖️ ' + s.final_weight_g + 'g &nbsp; 📈 ' + s.max_pressure_bar + 'bar';
+              return '**' + s.datetime.substring(0,10) + ' ' + s.datetime.substring(11,16) + ' — ' + s.profile + '**  \n⏱ ' + s.duration_s + 's &nbsp;|&nbsp; ⚖️ ' + s.final_weight_g + 'g &nbsp;|&nbsp; 📈 ' + s.max_pressure_bar + ' bar &nbsp;|&nbsp; 🌡️ ' + s.water_temp_c + '°C';
             })()}
           card_mod:
             style: |
-              ha-card { border-radius: 12px 12px 0 0; margin-bottom: -2px; text-align: center; padding: 8px; }
-        - type: picture
-          image: ${states['sensor.gaggiuino_barista_graph_3'].state}
-          card_mod:
-            style: |
-              ha-card { border-radius: 12px; margin-bottom: 16px; }
-
-# Shot 4
+              ha-card {
+                border-bottom-left-radius: 0 !important;
+                border-bottom-right-radius: 0 !important;
+                margin-bottom: -2px;text-align: center;
+              }
+        - type: custom:config-template-card
+          entities:
+            - sensor.gaggiuino_barista_graph_3
+          card:
+            type: picture
+            image: ${states['sensor.gaggiuino_barista_graph_3'].state}
+            tap_action:
+              action: url
+              url_path: ${states['sensor.gaggiuino_barista_graph_3'].state}
+            card_mod:
+              style: |
+                ha-card {
+                  border-top-left-radius: 0 !important;
+                  border-top-right-radius: 0 !important;
+                }
   - type: custom:config-template-card
     entities:
       - sensor.gaggiuino_barista_shot_history
@@ -225,23 +223,35 @@ cards:
       type: vertical-stack
       cards:
         - type: markdown
-          content: >-
+          content: |-
             ${(() => {
               const shots = states['sensor.gaggiuino_barista_shot_history'].attributes.shots;
-              if (!shots || shots.length < 4) return '';
+              if (!shots || shots.length < 4) return '*No data*';
               const s = shots[3];
-              return '**' + s.datetime.substring(0,10) + ' ' + s.datetime.substring(11,16) + ' — ' + s.profile + '** &nbsp; ⏱ ' + s.duration_s + 's &nbsp; ⚖️ ' + s.final_weight_g + 'g &nbsp; 📈 ' + s.max_pressure_bar + 'bar';
+              return '**' + s.datetime.substring(0,10) + ' ' + s.datetime.substring(11,16) + ' — ' + s.profile + '**  \n⏱ ' + s.duration_s + 's &nbsp;|&nbsp; ⚖️ ' + s.final_weight_g + 'g &nbsp;|&nbsp; 📈 ' + s.max_pressure_bar + ' bar &nbsp;|&nbsp; 🌡️ ' + s.water_temp_c + '°C';
             })()}
           card_mod:
             style: |
-              ha-card { border-radius: 12px 12px 0 0; margin-bottom: -2px; text-align: center; padding: 8px; }
-        - type: picture
-          image: ${states['sensor.gaggiuino_barista_graph_4'].state}
-          card_mod:
-            style: |
-              ha-card { border-radius: 12px; margin-bottom: 16px; }
-
-# Shot 5
+              ha-card {
+                border-bottom-left-radius: 0 !important;
+                border-bottom-right-radius: 0 !important;
+                margin-bottom: -2px;text-align: center;
+              }
+        - type: custom:config-template-card
+          entities:
+            - sensor.gaggiuino_barista_graph_4
+          card:
+            type: picture
+            image: ${states['sensor.gaggiuino_barista_graph_4'].state}
+            tap_action:
+              action: url
+              url_path: ${states['sensor.gaggiuino_barista_graph_4'].state}
+            card_mod:
+              style: |
+                ha-card {
+                  border-top-left-radius: 0 !important;
+                  border-top-right-radius: 0 !important;
+                }
   - type: custom:config-template-card
     entities:
       - sensor.gaggiuino_barista_shot_history
@@ -250,18 +260,32 @@ cards:
       type: vertical-stack
       cards:
         - type: markdown
-          content: >-
+          content: |-
             ${(() => {
               const shots = states['sensor.gaggiuino_barista_shot_history'].attributes.shots;
-              if (!shots || shots.length < 5) return '';
+              if (!shots || shots.length < 5) return '*No data*';
               const s = shots[4];
-              return '**' + s.datetime.substring(0,10) + ' ' + s.datetime.substring(11,16) + ' — ' + s.profile + '** &nbsp; ⏱ ' + s.duration_s + 's &nbsp; ⚖️ ' + s.final_weight_g + 'g &nbsp; 📈 ' + s.max_pressure_bar + 'bar';
+              return '**' + s.datetime.substring(0,10) + ' ' + s.datetime.substring(11,16) + ' — ' + s.profile + '**  \n⏱ ' + s.duration_s + 's &nbsp;|&nbsp; ⚖️ ' + s.final_weight_g + 'g &nbsp;|&nbsp; 📈 ' + s.max_pressure_bar + ' bar &nbsp;|&nbsp; 🌡️ ' + s.water_temp_c + '°C';
             })()}
           card_mod:
             style: |
-              ha-card { border-radius: 12px 12px 0 0; margin-bottom: -2px; text-align: center; padding: 8px; }
-        - type: picture
-          image: ${states['sensor.gaggiuino_barista_graph_5'].state}
-          card_mod:
-            style: |
-              ha-card { border-radius: 12px; }
+              ha-card {
+                border-bottom-left-radius: 0 !important;
+                border-bottom-right-radius: 0 !important;
+                margin-bottom: -2px;text-align: center;
+              }
+        - type: custom:config-template-card
+          entities:
+            - sensor.gaggiuino_barista_graph_5
+          card:
+            type: picture
+            image: ${states['sensor.gaggiuino_barista_graph_5'].state}
+            tap_action:
+              action: url
+              url_path: ${states['sensor.gaggiuino_barista_graph_5'].state}
+            card_mod:
+              style: |
+                ha-card {
+                  border-top-left-radius: 0 !important;
+                  border-top-right-radius: 0 !important;
+                }
