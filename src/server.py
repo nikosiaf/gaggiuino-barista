@@ -72,7 +72,7 @@ state = {
     "known_shot_id":      None,   # Last known shot ID (prevents re-triggering on old shots)
     "shot_running":        False,  # True when brew switch is on
     "shot_started_at":     None,   # Timestamp when current shot started
-    "last_shot_ended_at":  None,   # Timestamp for cooldown on pressure fallback trigger
+    "last_shot_ended_at":  None,   # Timestamp when last shot ended
     "last_plot":           None,   # ISO timestamp of last successful plot
     "last_error":          None,   # Last error message (for status endpoint)
     "status":              "idle", # Current status: idle, plotting, offline, error
@@ -207,7 +207,7 @@ def get_machine_status() -> dict | None:
     Fetch current machine status from Gaggiuino API.
     
     Returns:
-        Dict with pressure, brew_switch, temperature, weight, profile
+        Dict with pressure, brew_switch, steam_switch, water_level, temperature, weight, profile
         or None if machine is unreachable.
     """
     try:
@@ -220,11 +220,13 @@ def get_machine_status() -> dict | None:
             data = data[0]
         
         return {
-            "pressure":    float(data.get("pressure", 0)),
-            "brew_switch": bool(data.get("brewSwitchState", False)),
-            "temperature": float(data.get("temperature", 0)),
-            "weight":      float(data.get("weight", 0)),
-            "profile":     data.get("profileName", "unknown"),
+            "pressure":     float(data.get("pressure", 0)),
+            "brew_switch":  bool(data.get("brewSwitchState", False)),
+            "steam_switch": bool(data.get("steamSwitchState", False)),
+            "water_level":  int(data.get("waterLevel", 0)),
+            "temperature":  float(data.get("temperature", 0)),
+            "weight":       float(data.get("weight", 0)),
+            "profile":      data.get("profileName", "unknown"),
         }
     except Exception:
         return None
@@ -350,14 +352,14 @@ def watcher():
     Background thread that continuously polls Gaggiuino for shot detection.
     
     Detection logic:
-    1. Brew switch ON -> shot starts
-    2. Brew switch OFF -> shot ends (primary method)
-    3. Pressure >= 2.0 bar -> shot starts (fallback for unreliable brew switch)
-    4. Waits for shot ID to increment before triggering plot (confirms save)
+    1. Brew switch ON + steam switch OFF + water level >= 10 -> shot starts
+    2. Brew switch OFF -> shot ends
     
-    Suppressions:
-    - Pressure fallback ignored for 60s after shot ends (residual pressure)
-    - Shots shorter than MIN_SHOT_SECS or longer than MAX_SHOT_SECS ignored
+    Ignored states:
+    - water_level < 10 (low water)
+    - steam_switch == True (steam or hot water mode)
+    
+    Waits for shot ID to increment before triggering plot (confirms save).
     
     Runs forever in a daemon thread until container stops.
     """
@@ -387,40 +389,37 @@ def watcher():
             state["known_shot_id"] = get_latest_shot_id()
             log(f"Current shot ID: {state['known_shot_id']}")
 
-        pressure    = machine["pressure"]
+        pressure     = machine["pressure"]
         brew_switch = machine["brew_switch"]
+        steam_switch = machine["steam_switch"]
+        water_level = machine["water_level"]
         elapsed     = time.time() - state["shot_started_at"] if state["shot_started_at"] else 0
 
         # --- Verbose logging during active shot (every 10s) ---
         if state["shot_running"] and elapsed > 0 and int(elapsed) % 10 < POLL_INTERVAL:
             log(f"  [shot {elapsed:.0f}s] brew_switch={brew_switch} pressure={pressure:.2f}bar weight={machine['weight']:.1f}g")
 
-        # --- SHOT START: Brew switch turned on ---
-        if not state["shot_running"] and brew_switch:
+        # --- IGNORE: Low water level ---
+        if not state["shot_running"] and water_level < 10:
+            pass  # Silent ignore - low water
+
+        # --- IGNORE: Steam or hot water mode ---
+        elif not state["shot_running"] and steam_switch:
+            pass  # Silent ignore - steam or hot water
+
+        # --- SHOT START: Brew switch ON + steam OFF + water OK ---
+        elif not state["shot_running"] and brew_switch and not steam_switch:
             state["shot_running"] = True
             state["shot_started_at"] = time.time()
-            log(f"Shot STARTED (brew switch) | profile={machine['profile']} temp={machine['temperature']:.1f}C")
+            log(f"Shot STARTED | profile={machine['profile']} temp={machine['temperature']:.1f}C")
 
-        # --- SHOT START FALLBACK: Pressure spike ---
-        # Used when brew switch is unreliable
-        # Suppressed for 60s after shot ends to avoid residual pressure triggers
-        elif not state["shot_running"] and pressure >= 2.0:
-            ended_at = state["last_shot_ended_at"]
-            cooldown_elapsed = time.time() - ended_at if ended_at else 999
-            if cooldown_elapsed < 60:
-                pass  # Silently ignore - residual pressure after shot
-            else:
-                state["shot_running"] = True
-                state["shot_started_at"] = time.time()
-                log(f"Shot STARTED (pressure {pressure:.2f}bar) | profile={machine['profile']}")
-
-        # --- SHOT END: Brew switch turned off ---
+        # --- SHOT END: Brew switch OFF ---
         elif state["shot_running"] and not brew_switch:
             duration = time.time() - state["shot_started_at"]
             state["shot_running"] = False
             state["shot_started_at"] = None
             state["last_shot_ended_at"] = time.time()
-            log(f"Shot END signal | duration={duration:.0f}s pressure={pressure:.2f}bar")
+            log(f"Shot END | duration={duration:.0f}s pressure={pressure:.2f}bar")
 
             # Validate shot duration
             if duration < MIN_SHOT_SECS:

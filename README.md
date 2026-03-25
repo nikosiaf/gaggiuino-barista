@@ -1,16 +1,16 @@
-<p>
+<p align="center">
   <img src="https://raw.githubusercontent.com/nikosiaf/gaggiuino-barista/main/logo.png" alt="Gaggiuino Barista Logo" width="280">
 </p>
 
-<h1>☕ Gaggiuino Barista</h1>
+<h1 align="center">☕ Gaggiuino Barista</h1>
 
-<p>
+<p align="center">
   <a href="https://github.com/nikosiaf/gaggiuino-barista/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-Personal%20Use-red" alt="License"></a>
   <a href="https://www.home-assistant.io/"><img src="https://img.shields.io/badge/Home%20Assistant-Add--on-blue" alt="HA"></a>
-  <img src="https://img.shields.io/badge/Version-2.0.0-green" alt="v2.0.0">
+  <img src="https://img.shields.io/badge/Version-2.0.1-green" alt="v2.0.1">
 </p>
 
-<p>
+<p align="center">
   <strong>AI-powered espresso shot analysis for Home Assistant</strong><br>
   Auto-detect shots • Beautiful graphs • Smart feedback • Mobile notifications
 </p>
@@ -103,13 +103,14 @@ Shot Data → Deterministic Analysis → LLM Phrasing → Graph + Notification
 
 ## 📦 Credits
 
-- [Gaggiuino](https://github.com/Zer0-bit/gaggiuino) - Community-driven project to add high-end features to Gaggia Classic espresso machines.
+- [Gaggiuino](https://github.com/Zer0-bit/gaggiuino) - Community espresso profiles
 - [Home Assistant](https://www.home-assistant.io/) - Home automation platform
-- [Community Profiles](https://github.com/Zer0-bit/gaggiuino/tree/community/profiles) - Community espresso profiles
+- [Community Profiles](https://github.com/Zer0-bit/gaggiuino/tree/community/profiles) - CC BY-NC 4.0
 
 ---
 
 <p align="center">
   <a href="https://github.com/nikosiaf/gaggiuino-barista/issues">🐛 Issues</a> •
+  <a href="https://github.com/nikosiaf/gaggiuino-barista/discussions">💬 Discussions</a> •
   <a href="https://github.com/nikosiaf/gaggiuino-barista/tree/main/docs">📖 Full Docs</a>
 </p>
