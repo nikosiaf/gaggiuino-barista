@@ -1,16 +1,16 @@
-<p align="center">
+<p>
   <img src="https://raw.githubusercontent.com/nikosiaf/gaggiuino-barista/main/logo.png" alt="Gaggiuino Barista Logo" width="280">
 </p>
 
-<h1 align="center">☕ Gaggiuino Barista</h1>
+<h1>☕ Gaggiuino Barista</h1>
 
-<p align="center">
+<p>
   <a href="https://github.com/nikosiaf/gaggiuino-barista/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-Personal%20Use-red" alt="License"></a>
   <a href="https://www.home-assistant.io/"><img src="https://img.shields.io/badge/Home%20Assistant-Add--on-blue" alt="HA"></a>
   <img src="https://img.shields.io/badge/Version-2.0.0-green" alt="v2.0.0">
 </p>
 
-<p align="center">
+<p>
   <strong>AI-powered espresso shot analysis for Home Assistant</strong><br>
   Auto-detect shots • Beautiful graphs • Smart feedback • Mobile notifications
 </p>
