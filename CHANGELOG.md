@@ -6,7 +6,8 @@
 - **Shot Detection**: Now properly ignores steam and hot water modes
   - Added `steam_switch` from Gaggiuino API to detect steam/hot water mode
   - Added `water_level` check - ignores if water level < 10
-  - Shot detection now requires: brew_switch=ON AND steam_switch=OFF AND water_level>=10
+  - Added profile name check - ignores if profile starts with "[UT]" (user test mode)
+  - Shot detection now requires: brew_switch=ON AND steam_switch=OFF AND water_level>=10 AND profile not "[UT]"
 - **Pressure Fallback Removed**: No longer uses pressure-based shot detection (unreliable)
 - **API Fields Added**: `brewSwitchState` and `steamSwitchState` now properly read from `/api/system/status`
 

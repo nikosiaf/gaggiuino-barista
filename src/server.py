@@ -399,8 +399,12 @@ def watcher():
         if state["shot_running"] and elapsed > 0 and int(elapsed) % 10 < POLL_INTERVAL:
             log(f"  [shot {elapsed:.0f}s] brew_switch={brew_switch} pressure={pressure:.2f}bar weight={machine['weight']:.1f}g")
 
+        # --- IGNORE: User test mode (profile starts with [UT]) ---
+        if not state["shot_running"] and machine['profile'].startswith("[UT]"):
+            pass  # Silent ignore - user test mode
+
         # --- IGNORE: Low water level ---
-        if not state["shot_running"] and water_level < 10:
+        elif not state["shot_running"] and water_level < 10:
             pass  # Silent ignore - low water
 
         # --- IGNORE: Steam or hot water mode ---
