@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.0.2
+
+### Fixed
+- **Connection Loss Handling**: Plot subprocess now handles Gaggiuino connection loss gracefully
+  - Detects connection errors in plot output
+  - Retries once after 5 seconds
+  - If still unreachable, aborts gracefully without exposing exception details
+  - Returns to polling instead of leaving status in "error" state
+
+---
+
 ## 2.0.1
 
 ### Fixed

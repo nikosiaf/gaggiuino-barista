@@ -258,6 +258,75 @@ def get_latest_shot_id() -> int | None:
 # =========================
 # SHOT PLOTTING
 # =========================
+def _handle_plot_failure(result: subprocess.CompletedProcess):
+    """
+    Handle plot subprocess failure with connection-aware retry logic.
+    
+    - Connection errors: retry once after 5s, then abort gracefully
+    - Other errors: log stderr lines for debugging
+    """
+    stderr = result.stderr.strip()
+    is_connection_error = any(
+        kw in stderr for kw in ("Connection", "Timeout", "timed out", "ConnectTimeout")
+    )
+    
+    if is_connection_error:
+        log("Connection lost during plot - retrying in 5s...")
+        time.sleep(5)
+        
+        env = os.environ.copy()
+        retry = subprocess.run(
+            ["python", "/app/src/plot_logic.py"],
+            capture_output=True,
+            text=True,
+            timeout=300,
+            env=env,
+        )
+        
+        if retry.returncode == 0:
+            state["last_plot"] = datetime.now().isoformat()
+            state["last_error"] = None
+            state["status"] = "idle"
+            _parse_and_notify(retry.stdout)
+            log("Plot completed successfully on retry.")
+            return
+        else:
+            log("Plot aborted - machine unreachable")
+            state["last_error"] = "Connection unavailable"
+            state["status"] = "idle"
+            return
+    else:
+        state["last_error"] = stderr
+        state["status"] = "error"
+        log("Plot FAILED:")
+        for line in stderr.splitlines():
+            log(f"  {line}")
+
+
+def _parse_and_notify(stdout: str):
+    """Parse SUMMARY: JSON from stdout and send notification."""
+    summary = {}
+    analysis = {}
+    for line in stdout.strip().splitlines():
+        if line.startswith("SUMMARY:"):
+            try:
+                summary = json.loads(line[8:])
+                analysis = {
+                    "verdict": summary.get("verdict", ""),
+                    "tuning": summary.get("tuning", []),
+                    "score": summary.get("score", 0),
+                    "notification_text": summary.get("notification_text", ""),
+                }
+            except Exception:
+                pass
+        elif line.startswith("WARNING") or "Gemini" in line or "Anthropic" in line:
+            log(f"  [AI] {line}")
+        else:
+            log(f"  -> {line}")
+    
+    send_notification(summary, analysis)
+
+
 def run_plot(shot_id: int, duration: float):
     """
     Spawn subprocess to generate shot graph and run AI analysis.
@@ -297,42 +366,14 @@ def run_plot(shot_id: int, duration: float):
         )
         
         if result.returncode == 0:
-            # Success - parse output and send notification
             state["last_plot"] = datetime.now().isoformat()
             state["last_error"] = None
             state["status"] = "idle"
-            
-            # Parse SUMMARY: JSON from stdout
-            summary = {}
-            analysis = {}
-            for line in result.stdout.strip().splitlines():
-                if line.startswith("SUMMARY:"):
-                    try:
-                        summary = json.loads(line[8:])
-                        analysis = {
-                            "verdict": summary.get("verdict", ""),
-                            "tuning": summary.get("tuning", []),
-                            "score": summary.get("score", 0),
-                            "notification_text": summary.get("notification_text", ""),
-                        }
-                    except Exception:
-                        log(f"  -> {line}")
-                elif line.startswith("WARNING") or "Gemini" in line or "Anthropic" in line:
-                    # Log AI-related messages with [AI] prefix
-                    log(f"  [AI] {line}")
-                else:
-                    log(f"  -> {line}")
-            
+            _parse_and_notify(result.stdout)
             log("Plot completed successfully.")
-            send_notification(summary, analysis)
         else:
-            # Plot failed - log errors
-            state["last_error"] = result.stderr.strip()
-            state["status"] = "error"
-            log("Plot FAILED:")
-            for line in result.stderr.strip().splitlines():
-                log(f"  {line}")
-                
+            _handle_plot_failure(result)
+
     except subprocess.TimeoutExpired:
         state["last_error"] = "Plot timed out after 300s"
         state["status"] = "error"

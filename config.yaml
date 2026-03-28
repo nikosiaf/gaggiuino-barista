@@ -5,7 +5,7 @@
 
 name: Gaggiuino Barista
 slug: gaggiuino_barista
-version: "2.0.1"
+version: "2.0.2"
 description: >
   Your espresso shot analyst!
   Auto-detect shots, get beautiful graphs with AI-powered insights,

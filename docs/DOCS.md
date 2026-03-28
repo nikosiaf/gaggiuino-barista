@@ -7,7 +7,7 @@
 # [Home Assistant](https://www.home-assistant.io/) add-on for [Gaggiuino](https://github.com/Zer0-bit/gaggiuino) espresso machines.
 Automatically detects shots, generates detailed graphs, runs a deterministic telemetry analyzer plus AI phrasing, and sends mobile push notifications with annotated graphs and next-shot tuning recommendations.
 
-**Version:** 2.0.0
+**Version:** 2.0.2
 
 ---
 
