@@ -1,55 +1,48 @@
 #!/usr/bin/env python3
 """
 Command-line sensor script for Home Assistant.
-Reads shot_history.json and last 10 PNG files from the gaggiuino-barista output dir.
+Reads shot_history.json and finds each shot's own graph.
 Outputs a single JSON object for use as a HA command_line sensor.
 Place this file at: /config/scripts/gaggiuino_barista_history.py
 Run with: python3 /config/scripts/gaggiuino_barista_history.py
 """
 import json
-import os
 from pathlib import Path
 
 BASE_DIR  = Path("/config/www/gaggiuino-barista")
 WEB_PATH  = "/local/gaggiuino-barista"
 HISTORY_JSON = BASE_DIR / "shot_history.json"
+MAX_SHOTS = 10
+
+
+def graph_of(shot):
+    """The graph of this very shot, by its ID. Files from before 2.1.0 are named shot_<time>_id<N>.png."""
+    shot_id = shot.get("shot_id")
+    for path in [BASE_DIR / f"shot_{shot_id}.png", *BASE_DIR.glob(f"shot_*_id{shot_id}.png")]:
+        if path.exists():
+            return {"shot_id": shot_id, "filename": path.name, "url": f"{WEB_PATH}/{path.name}",
+                    "modified": int(path.stat().st_mtime)}
+    return {"shot_id": shot_id, "filename": "", "url": "", "modified": 0}
+
 
 def main():
     result = {
         "shots": [],
-        "graphs": [],
+        "graphs": [],  # same order as shots: graphs[i] belongs to shots[i]
         "total_shots": 0,
     }
 
-    # Load shot_history.json (last 10 shots data)
     if HISTORY_JSON.exists():
         try:
             shots = json.loads(HISTORY_JSON.read_text())
-            result["shots"]       = shots[:11]
+            result["shots"]       = shots[:MAX_SHOTS]
             result["total_shots"] = len(shots)
+            result["graphs"]      = [graph_of(s) for s in result["shots"]]
         except Exception as e:
             result["error_json"] = str(e)
 
-    # List last 10 PNG graph files sorted by modification time
-    if BASE_DIR.exists():
-        try:
-            pngs = sorted(
-                BASE_DIR.glob("shot_*.png"),
-                key=lambda p: p.stat().st_mtime,
-                reverse=True
-            )[:10]
-            result["graphs"] = [
-                {
-                    "filename": p.name,
-                    "url":      f"{WEB_PATH}/{p.name}",
-                    "modified": int(p.stat().st_mtime),
-                }
-                for p in pngs
-            ]
-        except Exception as e:
-            result["error_graphs"] = str(e)
-
     print(json.dumps(result))
+
 
 if __name__ == "__main__":
     main()

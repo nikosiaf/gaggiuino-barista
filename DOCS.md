@@ -7,7 +7,7 @@
 # [Home Assistant](https://www.home-assistant.io/) add-on for [Gaggiuino](https://github.com/Zer0-bit/gaggiuino) espresso machines.
 Automatically detects shots, generates detailed graphs, runs a deterministic telemetry analyzer plus AI phrasing, and sends mobile push notifications with annotated graphs and next-shot tuning recommendations.
 
-**Version:** 2.0.2
+**Version:** 2.1.0
 
 ---
 
@@ -163,8 +163,10 @@ In the add-on **Configuration** tab, set:
 | `api_base` | http://gaggiuino.local or Gaggiuino IP address, incase mDNS issues, e.g. `http://192.168.1.100` |
 | `anthropic_api_key` | Anthropic API key from Step 3A |
 | `gemini_api_key` | Your Gemini API key from Step 3B |
+| `api_token` | Optional. A long random text that lets a dashboard button start an analysis (Optional Step A) |
+| `anthropic_model`, `gemini_model` | Optional. Use other AI models than the defaults, `claude-haiku-5-5` and `gemini-3.1-flash-lite` |
 | `ha_notify_service` | Your notify service from Step 2, e.g. `notify.mobile_app_johns_iphone` |
-| `llm_language` | Language for AI phrasing: `en` (English, 700 tokens), `el` (Greek, 1500 tokens), `it` (Italian, 1500 tokens), `de` (German, 1500 tokens), `es` (Spanish, 1500 tokens), `fr` (French, 1500 tokens). Default: `en` |
+| `llm_language` | Language for AI phrasing: `en` (English), `el` (Greek), `it` (Italian, 1500 tokens), `de` (German, 1500 tokens), `es` (Spanish, 1500 tokens), `fr` (French, 1500 tokens). Default: `en` |
 
 ---
 
@@ -201,7 +203,11 @@ rest_command:
   gaggiuino_barista_plot_latest:
     url: "http://127.0.0.1:5000/plot/latest"
     method: POST
+    headers:
+      Authorization: !secret gaggiuino_barista_token
 ```
+
+In `secrets.yaml`, add `gaggiuino_barista_token: "Bearer <your api_token>"`. Set the same token as `api_token` in the add-on configuration. Without one, this endpoint stays off, because each run can cost an AI call and sends a notification.
 
 You can then call it from **Developer Tools → Actions** → `rest_command.gaggiuino_barista_plot_latest`, or add a button card to your dashboard:
 
@@ -223,7 +229,7 @@ After rebuilding:
    Machine ONLINE | profile=... temp=...C pressure=...bar
    ```
 2. Open `http://your-ha-ip:5000/status` — you should see a JSON response
-3. Hit `http://your-ha-ip:5000/plot/latest` — triggers a manual plot and sends a notification
+3. Press your `rest_command.gaggiuino_barista_plot_latest` button (Optional Step A) — triggers a manual plot and sends a notification
 4. Pull a shot — the add-on detects it automatically and sends a notification
 
 ---
@@ -592,7 +598,7 @@ Port **5000** is exposed by the add-on.
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/plot/latest` | GET / POST | Manually trigger plot + notification |
+| `/plot/latest` | POST, with `Authorization: Bearer <api_token>` | Manually trigger plot + notification |
 | `/status` | GET | Watcher state + live machine data |
 
 Access at `http://your-ha-ip:5000/status`
@@ -664,7 +670,7 @@ Last shot always available at `/local/gaggiuino-barista/last_shot.png`
 **Card 1 shows "No shots recorded yet" even after a shot**
 - The REST sensor URL must use your actual HA IP, not `localhost`
 - Check `configuration.yaml` → `rest:` → `resource:` — replace `localhost` with your HA IP
-- Trigger a manual plot at `http://your-ha-ip:5000/plot/latest` to generate `last_shot.json`
+- Pull a shot, or trigger a manual plot with your `rest_command` button, to generate `last_shot.json`
 
 **Status shows `offline` with machine on**
 - Verify `api_base` — open `http://<ip>/api/system/status` in your browser

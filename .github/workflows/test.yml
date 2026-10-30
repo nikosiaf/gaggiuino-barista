@@ -1,0 +1,19 @@
+name: test
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: pip install -r requirements-dev.txt
+      - run: pytest -q
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build --build-arg BUILD_FROM=ghcr.io/home-assistant/amd64-base:latest -t gaggiuino-barista .

@@ -26,13 +26,19 @@ Environment variables (set via config.yaml / run.sh):
 """
 
 import os
+import pathlib
 import time
 import json
 import threading
+import hmac
 import subprocess
+import sys
 from datetime import datetime
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
+from waitress import serve
 import requests
+
+from redact import redact
 
 
 # =========================
@@ -51,6 +57,9 @@ SHOT_ID_POLL    = 5          # How often to poll for new shot ID while waiting f
 POST_SHOT_DELAY = 8          # Wait time after shot ends before fetching data (allows Gaggiuino to save)
 MIN_SHOT_SECS   = 8          # Minimum shot duration to be considered valid (ignore flushes, etc.)
 MAX_SHOT_SECS   = 180        # Maximum shot duration (ignore accidental left-on machines)
+API_TOKEN       = os.getenv("API_TOKEN", "")  # Required by POST /plot/latest
+WORKER_ENV      = ("PATH", "HOME", "TZ", "LANG", "LC_ALL", "API_BASE", "ANTHROPIC_API_KEY", "ANTHROPIC_MODEL",
+                   "GEMINI_API_KEY", "GEMINI_MODEL", "LLM_LANGUAGE", "MPLCONFIGDIR", "MPLBACKEND")
 TIMEOUT         = 5          # HTTP request timeout when talking to Gaggiuino
 
 # Home Assistant integration
@@ -66,6 +75,7 @@ LANGUAGES     = {"en": "English", "el": "Greek", "it": "Italian", "de": "German"
 # =========================
 # WATCHER STATE
 # =========================
+_analysis_lock = threading.Lock()  # one analysis at a time: each can cost an AI call
 # Shared state between watcher thread and web server
 # Used to track shot detection progress and machine status
 state = {
@@ -84,7 +94,7 @@ state = {
 # =========================
 def log(msg: str):
     """Print timestamped log message to stdout (captured by Docker/HA logs)."""
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}", flush=True)
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] {redact(msg)}", flush=True)
 
 
 # =========================
@@ -153,7 +163,8 @@ def send_notification(summary: dict, analysis: dict):
     
     # Resolve the graph URL - try Supervisor API first, fall back to relative path
     # The relative path works when accessed from within HA network
-    graph_path = "/local/gaggiuino-barista/last_shot.png"
+    # This shot's own file: last_shot.png would show a newer shot once there is one
+    graph_path = f"/local/gaggiuino-barista/{summary.get('graph_file', 'last_shot.png')}"
     ha_base_url = os.getenv("HA_BASE_URL", "").rstrip("/")
     
     # Try to get HA base URL from Supervisor config
@@ -258,7 +269,7 @@ def get_latest_shot_id() -> int | None:
 # =========================
 # SHOT PLOTTING
 # =========================
-def _handle_plot_failure(result: subprocess.CompletedProcess):
+def _handle_plot_failure(result: subprocess.CompletedProcess, shot_id: int):
     """
     Handle plot subprocess failure with connection-aware retry logic.
     
@@ -274,14 +285,7 @@ def _handle_plot_failure(result: subprocess.CompletedProcess):
         log("Connection lost during plot - retrying in 5s...")
         time.sleep(5)
         
-        env = os.environ.copy()
-        retry = subprocess.run(
-            ["python", "/app/src/plot_logic.py"],
-            capture_output=True,
-            text=True,
-            timeout=300,
-            env=env,
-        )
+        retry = _run_analysis(shot_id)
         
         if retry.returncode == 0:
             state["last_plot"] = datetime.now().isoformat()
@@ -296,7 +300,7 @@ def _handle_plot_failure(result: subprocess.CompletedProcess):
             state["status"] = "idle"
             return
     else:
-        state["last_error"] = stderr
+        state["last_error"] = redact(stderr.splitlines()[-1] if stderr else "Plot failed")[:300]
         state["status"] = "error"
         log("Plot FAILED:")
         for line in stderr.splitlines():
@@ -325,6 +329,24 @@ def _parse_and_notify(stdout: str):
             log(f"  -> {line}")
     
     send_notification(summary, analysis)
+    return summary
+
+
+def _worker_env() -> dict:
+    """What the analysis process gets: only what it uses. Not the Supervisor token."""
+    return {k: os.environ[k] for k in WORKER_ENV if k in os.environ}
+
+
+def _run_analysis(shot_id: int) -> subprocess.CompletedProcess:
+    """Graph and analyze exactly this shot."""
+    return subprocess.run(
+        [sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "plot_logic.py"),
+         "--shot-id", str(shot_id)],
+        capture_output=True,
+        text=True,
+        timeout=300,  # 5 minute timeout for plot generation
+        env=_worker_env(),
+    )
 
 
 def run_plot(shot_id: int, duration: float):
@@ -352,18 +374,8 @@ def run_plot(shot_id: int, duration: float):
     state["status"] = "plotting"
     
     try:
-        # Pass all environment variables to subprocess (including LLM_LANGUAGE)
-        env = os.environ.copy()
-        log(f"LLM_LANGUAGE env = {LANGUAGES.get(env.get('LLM_LANGUAGE', ''), env.get('LLM_LANGUAGE', 'NOT SET'))}")
-        
-        # Run plot_logic.py as subprocess
-        result = subprocess.run(
-            ["python", "/app/src/plot_logic.py"],
-            capture_output=True,
-            text=True,
-            timeout=300,  # 5 minute timeout for plot generation
-            env=env,      # Pass environment including API keys and language setting
-        )
+        with _analysis_lock:
+            result = _run_analysis(shot_id)
         
         if result.returncode == 0:
             state["last_plot"] = datetime.now().isoformat()
@@ -372,7 +384,7 @@ def run_plot(shot_id: int, duration: float):
             _parse_and_notify(result.stdout)
             log("Plot completed successfully.")
         else:
-            _handle_plot_failure(result)
+            _handle_plot_failure(result, shot_id)
 
     except subprocess.TimeoutExpired:
         state["last_error"] = "Plot timed out after 300s"
@@ -380,7 +392,7 @@ def run_plot(shot_id: int, duration: float):
         log("Plot TIMED OUT after 300s")
         
     except Exception as e:
-        state["last_error"] = str(e)
+        state["last_error"] = redact(e)[:300]
         state["status"] = "error"
         log(f"Plot EXCEPTION: {e}")
 
@@ -517,75 +529,53 @@ def _wait_for_new_shot_id(timeout: int = 30) -> int | None:
 # =========================
 # FLASK WEB ROUTES
 # =========================
-@app.route("/plot/latest", methods=["POST", "GET"])
+@app.route("/plot/latest", methods=["POST"])
 def plot_latest():
     """
-    Manual trigger endpoint for plotting the latest shot.
-    
-    POST/GET /plot/latest
-    
-    Use cases:
-    - Manual trigger from Home Assistant dashboard button
-    - Re-generate plot for a specific shot
-    - Test the add-on without pulling a new shot
-    
+    Analyze the latest shot on request (a dashboard button or automation).
+
+    POST /plot/latest with the header "Authorization: Bearer <api_token>".
+    Every run can cost an AI call and sends a notification, so it needs the token from the
+    add-on's configuration; without a configured token the endpoint stays off.
+
     Returns:
-        JSON with ok=True and stdout on success, or error details on failure.
+        JSON with ok, shot_id, score and profile; errors carry a short message, never process output.
     """
+    if not API_TOKEN:
+        return jsonify({"ok": False, "error": "Set api_token in the add-on configuration to use this endpoint"}), 403
+    sent = request.headers.get("Authorization", "")
+    if not hmac.compare_digest(sent.encode(), f"Bearer {API_TOKEN}".encode()):
+        return jsonify({"ok": False, "error": "Missing or wrong token"}), 401
+
     machine = get_machine_status()
     if machine is None:
         return jsonify({"ok": False, "error": "Gaggiuino unreachable - machine may be offline"}), 503
-    
     shot_id = get_latest_shot_id()
+    if shot_id is None:
+        return jsonify({"ok": False, "error": "The machine reports no shot"}), 503
+    if not _analysis_lock.acquire(blocking=False):
+        return jsonify({"ok": False, "error": "An analysis is already running"}), 409
+
     log(f"Manual plot triggered | shot_id={shot_id} profile={machine['profile']}")
-    
     try:
-        env = os.environ.copy()
-        log(f"LLM_LANGUAGE env = {LANGUAGES.get(env.get('LLM_LANGUAGE', ''), env.get('LLM_LANGUAGE', 'NOT SET'))}")
-        
-        result = subprocess.run(
-            ["python", "/app/src/plot_logic.py"],
-            capture_output=True, text=True, timeout=300,
-            env=env,
-        )
-        
+        result = _run_analysis(shot_id)
         if result.returncode != 0:
             log("Manual plot FAILED:")
             for line in result.stderr.strip().splitlines():
                 log(f"  {line}")
-            return jsonify({"ok": False, "stderr": result.stderr}), 500
-
-        # Parse output and send notification
-        summary = {}
-        analysis = {}
-        for line in result.stdout.strip().splitlines():
-            if line.startswith("SUMMARY:"):
-                try:
-                    summary = json.loads(line[8:])
-                    analysis = {
-                        "verdict": summary.get("verdict", ""),
-                        "tuning": summary.get("tuning", []),
-                        "score": summary.get("score", 0),
-                        "notification_text": summary.get("notification_text", ""),
-                    }
-                    log(f"  [AI] Shot #{summary.get('shot_id')} | {summary.get('profile')} | verdict: {bool(summary.get('verdict'))}")
-                except Exception:
-                    log(f"  -> {line}")
-            elif line.startswith("WARNING") or "Gemini" in line or "Anthropic" in line:
-                log(f"  [AI] {line}")
-            else:
-                log(f"  -> {line}")
-
+            return jsonify({"ok": False, "error": "Analysis failed, see the add-on log"}), 500
+        summary = _parse_and_notify(result.stdout)
         log("Manual plot completed.")
-        send_notification(summary, analysis)
-        return jsonify({"ok": True, "stdout": result.stdout})
-        
+        return jsonify({"ok": True, "shot_id": summary.get("shot_id"), "score": summary.get("score"),
+                        "profile": summary.get("profile")})
     except subprocess.TimeoutExpired:
         log("Manual plot TIMED OUT after 300s")
-        return jsonify({"ok": False, "error": "Plot timed out"}), 500
-        
+        return jsonify({"ok": False, "error": "Analysis timed out"}), 500
     except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
+        log(f"Manual plot EXCEPTION: {e}")
+        return jsonify({"ok": False, "error": "Analysis failed, see the add-on log"}), 500
+    finally:
+        _analysis_lock.release()
 
 
 @app.route("/status", methods=["GET"])
@@ -613,7 +603,7 @@ def status():
         "shot_elapsed_s": round(elapsed, 1) if elapsed else None,
         "known_shot_id":  state["known_shot_id"],
         "last_plot":      state["last_plot"],
-        "last_error":     state["last_error"],
+        "last_error":     redact(state["last_error"]) if state["last_error"] else None,
         "machine":        machine,
     })
 
@@ -621,66 +611,61 @@ def status():
 # =========================
 # STARTUP SEQUENCE
 # =========================
-import pathlib
-import sys
+def start():
+    """Check the surroundings and start the watcher. Nothing here stops the add-on."""
 
-# Ensure output directory exists
-_www_dir = pathlib.Path("/homeassistant/www/gaggiuino-barista")
-if not _www_dir.exists():
-    _www_dir.mkdir(parents=True, exist_ok=True)
-    log(f"Created output directory: {_www_dir}")
-else:
-    log(f"Output directory exists: {_www_dir}")
-
-# Verify REST sensor is configured in Home Assistant
-# This sensor reads last_shot.json and exposes it as an entity for dashboards
-log("Checking HA REST sensor configuration...")
-try:
-    _sensor_check = requests.get(
-        "http://supervisor/core/api/states/sensor.gaggiuino_barista_last_shot",
-        headers={"Authorization": f"Bearer {HA_TOKEN}", "Content-Type": "application/json"},
-        timeout=5,
-    )
-    if _sensor_check.status_code == 200:
-        log("REST sensor OK: sensor.gaggiuino_barista_last_shot found")
-    elif _sensor_check.status_code == 404:
-        log("=" * 60)
-        log("WARNING: REST sensor not configured!")
-        log("sensor.gaggiuino_barista_last_shot does not exist in HA.")
-        log("Please follow Step 1 in the add-on Documentation tab")
-        log("to add the REST sensor to your configuration.yaml,")
-        log("then restart Home Assistant and rebuild this add-on.")
-        log("=" * 60)
-        sys.exit(1)
+    # Ensure output directory exists
+    _www_dir = pathlib.Path("/homeassistant/www/gaggiuino-barista")
+    if not _www_dir.exists():
+        _www_dir.mkdir(parents=True, exist_ok=True)
+        log(f"Created output directory: {_www_dir}")
     else:
-        log(f"WARNING: Unexpected response checking REST sensor: HTTP {_sensor_check.status_code}")
-except Exception as e:
-    log(f"WARNING: Could not check REST sensor (Supervisor API unavailable?): {e}")
+        log(f"Output directory exists: {_www_dir}")
 
-# Log configured language
-log(f"LLM Language: {LANGUAGES.get(LLM_LANGUAGE, LLM_LANGUAGE)}")
+    # Verify REST sensor is configured in Home Assistant
+    # This sensor reads last_shot.json and exposes it as an entity for dashboards
+    log("Checking HA REST sensor configuration...")
+    try:
+        _sensor_check = requests.get(
+            "http://supervisor/core/api/states/sensor.gaggiuino_barista_last_shot",
+            headers={"Authorization": f"Bearer {HA_TOKEN}", "Content-Type": "application/json"},
+            timeout=5,
+        )
+        if _sensor_check.status_code == 200:
+            log("REST sensor OK: sensor.gaggiuino_barista_last_shot found")
+        elif _sensor_check.status_code == 404:
+            log("=" * 60)
+            log("WARNING: REST sensor not configured!")
+            log("sensor.gaggiuino_barista_last_shot does not exist in HA.")
+            log("Please follow Step 1 in the add-on Documentation tab")
+            log("to add the REST sensor to your configuration.yaml,")
+            log("then restart Home Assistant. Shot detection keeps running without it;")
+            log("only the dashboard cards need it.")
+            log("=" * 60)
+        else:
+            log(f"WARNING: Unexpected response checking REST sensor: HTTP {_sensor_check.status_code}")
+    except Exception as e:
+        log(f"WARNING: Could not check REST sensor (Supervisor API unavailable?): {e}")
 
-# Check machine connectivity
-log("Checking machine status on startup...")
-startup_status = get_machine_status()
-if startup_status:
-    log(f"Machine ONLINE | profile={startup_status['profile']} temp={startup_status['temperature']:.1f}C pressure={startup_status['pressure']:.2f}bar")
-    startup_id = get_latest_shot_id()
-    state["known_shot_id"] = startup_id
-    log(f"Current shot ID: {startup_id}")
-else:
-    log("Machine OFFLINE at startup - watcher will detect when it comes back")
+    # Log configured language
+    log(f"LLM Language: {LANGUAGES.get(LLM_LANGUAGE, LLM_LANGUAGE)}")
 
-# Start background watcher thread
-log("Starting watcher thread...")
-threading.Thread(target=watcher, daemon=True).start()
+    # Check machine connectivity
+    log("Checking machine status on startup...")
+    startup_status = get_machine_status()
+    if startup_status:
+        log(f"Machine ONLINE | profile={startup_status['profile']} temp={startup_status['temperature']:.1f}C pressure={startup_status['pressure']:.2f}bar")
+        startup_id = get_latest_shot_id()
+        state["known_shot_id"] = startup_id
+        log(f"Current shot ID: {startup_id}")
+    else:
+        log("Machine OFFLINE at startup - watcher will detect when it comes back")
 
-# Start web server on port 5000
-log("Starting web server on port 5000...")
-try:
-    from waitress import serve
-    log("Using waitress WSGI server")
+    log("Starting watcher thread...")
+    threading.Thread(target=watcher, daemon=True).start()
+
+
+if __name__ == "__main__":
+    start()
+    log("Starting web server on port 5000...")
     serve(app, host="0.0.0.0", port=5000)
-except ImportError:
-    log("waitress not found - falling back to Flask dev server")
-    app.run(host="0.0.0.0", port=5000)

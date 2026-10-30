@@ -7,7 +7,7 @@
 <p>
   <a href="https://github.com/nikosiaf/gaggiuino-barista/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-Personal%20Use-red" alt="License"></a>
   <a href="https://www.home-assistant.io/"><img src="https://img.shields.io/badge/Home%20Assistant-Add--on-blue" alt="HA"></a>
-  <img src="https://img.shields.io/badge/Version-2.0.1-green" alt="v2.0.1">
+  <img src="https://img.shields.io/badge/Version-2.1.0-green" alt="v2.1.0">
 </p>
 
 <p>
@@ -46,7 +46,7 @@ rest:
   - resource: "http://YOUR-HA-IP:8123/local/gaggiuino-barista/last_shot.json"
     scan_interval: 10
     sensor:
-      - name: "Gaggiuino Last Shot"
+      - name: "Gaggiuino Barista Last Shot"
         unique_id: gaggiuino_barista_last_shot
         value_template: "{{ value_json.shot_id }}"
         json_attributes: "{{ value_json.keys() | list }}"

@@ -963,13 +963,13 @@ def taste_based_scoring(features: dict, events: list, profile_template: dict) ->
     target_flow = profile_template.get("target_flow", 2.0)
     
     if avg_flow > max_flow * 1.3:
-        over_extra += 1.5
-    elif avg_flow > max_flow * 1.15:
-        over_extra += 0.5
-    elif avg_flow < min_flow * 0.7:
         under_extra += 1.5
-    elif avg_flow < min_flow * 0.85:
+    elif avg_flow > max_flow * 1.15:
         under_extra += 0.5
+    elif avg_flow < min_flow * 0.7:
+        over_extra += 1.5
+    elif avg_flow < min_flow * 0.85:
+        over_extra += 0.5
     else:
         balanced_count += 1
     

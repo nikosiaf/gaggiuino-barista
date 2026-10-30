@@ -70,7 +70,7 @@ cards:
           if (!shots || idx < 0 || idx >= shots.length) return '*No shot data*';
           const s = shots[idx];
           const sc = s.score ? '📊 **Score: ' + s.score + '/100**' : '';
-          const ai = s.ai_available ? '🧠 AI Analysis: ' + (s.verdict || 'N/A') : '';
+          const ai = s.verdict ? (s.ai_available ? '🧠 AI explanation: ' : '📊 Local analysis: ') + s.verdict : '';
           const tips = s.tuning && s.tuning.length ? s.tuning[0] : '';
           return '**' + s.datetime + '**  ☕ ' + s.profile + '\n\n' +
                  '⏱ ' + s.duration_s + 's  ⚖️ ' + s.final_weight_g + 'g  📈 ' + s.max_pressure_bar + 'bar  🌡 ' + s.water_temp_c + '°C' +

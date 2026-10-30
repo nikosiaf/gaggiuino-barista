@@ -1,5 +1,5 @@
 # ============================================================
-# Gaggiuino Barista v2.0.0 - Home Assistant Sensors & Cards
+# Gaggiuino Barista v2.1.0 - Home Assistant Sensors & Cards
 # ============================================================
 #
 # PART 1: REST SENSOR (add under "rest:" in configuration.yaml)
@@ -16,7 +16,7 @@
 #   - resource: "http://homeassistant.local:8123/local/gaggiuino-barista/last_shot.json"
 #     scan_interval: 10
 #     sensor:
-#       - name: "Gaggiuino Last Shot"
+#       - name: "Gaggiuino Barista Last Shot"
 #         unique_id: gaggiuino_barista_last_shot
 #         value_template: "{{ value_json.shot_id }}"
 #         json_attributes: "{{ value_json.keys() | list }}"
@@ -127,8 +127,8 @@ cards:
       {% if sc %}<br>📊 **Score: {{ sc }}/100**{% endif %}
 
       ---
-      {% if ai %}
-      🧠 **AI Analysis**
+      {% if v %}
+      {{ '🧠 **AI explanation**' if ai else '📊 **Local analysis**' }}
       {{ v }}
       {% if tips %}
       🔧 **Next shot:**

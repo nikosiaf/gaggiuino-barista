@@ -20,6 +20,20 @@ export ANTHROPIC_API_KEY
 GEMINI_API_KEY=$(bashio::config 'gemini_api_key')
 export GEMINI_API_KEY
 
+# Token that POST /plot/latest requires (empty: the endpoint stays off)
+API_TOKEN=$(bashio::config 'api_token')
+export API_TOKEN
+
+# Optional AI model overrides
+if bashio::config.has_value 'anthropic_model'; then
+    ANTHROPIC_MODEL=$(bashio::config 'anthropic_model')
+    export ANTHROPIC_MODEL
+fi
+if bashio::config.has_value 'gemini_model'; then
+    GEMINI_MODEL=$(bashio::config 'gemini_model')
+    export GEMINI_MODEL
+fi
+
 # Read Home Assistant notify service for mobile notifications
 HA_NOTIFY_SERVICE=$(bashio::config 'ha_notify_service')
 export HA_NOTIFY_SERVICE
@@ -28,9 +42,5 @@ export HA_NOTIFY_SERVICE
 LLM_LANGUAGE=$(bashio::config 'llm_language')
 export LLM_LANGUAGE
 
-# SUPERVISOR_TOKEN is auto-injected by HA — explicitly re-export to ensure
-# subprocesses (plot_logic.py) inherit it along with other env vars
-export SUPERVISOR_TOKEN
-
 # Launch the Python server
-python /app/src/server.py
+exec python3 /app/src/server.py

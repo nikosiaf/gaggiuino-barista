@@ -1,5 +1,35 @@
 # Changelog
 
+## 2.1.0
+
+### Upgrade notes
+- **`/plot/latest` now needs a token and POST.** Set `api_token` in the add-on configuration and add the `Authorization` header to your `rest_command` (see the Documentation tab). Without a token the endpoint stays off.
+- **Copy `addon/gaggiuino_barista_history.py` to `/config/scripts/` again**, so history graphs match their shots.
+- If `/plot/latest` was reachable by others and Gemini ever failed, **replace your Gemini API key**: it could appear in the response.
+
+### Security
+- Gemini key sent in a header, never in the URL; credentials are removed from logs and status.
+- `/plot/latest` returns a short result instead of raw process output, and runs one analysis at a time.
+- The analysis process no longer receives the Supervisor token. API keys are masked in the add-on configuration.
+
+### Fixed
+- Every graph, JSON record and notification now belongs to one shot. A later shot can't be picked up by mistake, and an older notification opens its own graph (`shot_<id>.png`).
+- History pairs graphs with shots by shot ID.
+- **Gemini fallback**: Google shut down `gemini-2.0-flash-lite` on 1 June 2026. The default is now `gemini-3.1-flash-lite`.
+- The add-on no longer stops when the REST sensor is missing. Docs now use the sensor name the add-on expects.
+- Fast flow counts as under-extraction and slow flow as over-extraction (they were swapped).
+- Local-only results no longer say "AI Analysis".
+- Graphs and JSON are written atomically, and the graph is rendered once per shot.
+- `waitress` is now a required dependency, with no silent fallback to Flask's development server.
+
+### Changed
+- The score, confidence and event severity always come from the local analyzer. AI only writes the explanation.
+- Default Claude model is now `claude-haiku-5-5`. Both models can be changed in the configuration.
+- `DOCS.md` moved to the add-on root, so Home Assistant shows the Documentation tab.
+- Added an automated test suite and CI.
+
+---
+
 ## 2.0.2
 
 ### Fixed

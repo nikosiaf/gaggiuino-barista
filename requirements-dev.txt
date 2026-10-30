@@ -1,0 +1,5 @@
+matplotlib
+requests
+flask
+waitress
+pytest

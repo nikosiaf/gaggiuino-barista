@@ -5,7 +5,7 @@
 
 name: Gaggiuino Barista
 slug: gaggiuino_barista
-version: "2.0.2"
+version: "2.1.0"
 description: >
   Your espresso shot analyst!
   Auto-detect shots, get beautiful graphs with AI-powered insights,
@@ -46,19 +46,25 @@ options:
   anthropic_api_key: ""
   # Google Gemini API key (fallback AI provider, free tier available)
   gemini_api_key: ""
+  # Token for POST /plot/latest; leave empty to keep that endpoint off
+  api_token: ""
   # Home Assistant notify service for mobile notifications
   # Format: notify.mobile_app_your_phone
   ha_notify_service: "notify.mobile_app_your_phone"
   # Language for AI analysis output: en, el, it, de, es, fr
   llm_language: "en"
 
-# Configuration schema (all fields are strings)
+# Configuration schema (secrets are masked in the UI)
 schema:
   api_base: str
-  anthropic_api_key: str
-  gemini_api_key: str
+  anthropic_api_key: password
+  gemini_api_key: password
+  api_token: password
   ha_notify_service: str
-  llm_language: str
+  llm_language: list(en|el|it|de|es|fr)
+  # Optional: other AI models than the defaults
+  anthropic_model: str?
+  gemini_model: str?
 
 # File system mappings
 map:
